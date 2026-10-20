@@ -302,7 +302,7 @@ function inPoly(x,y,p){let ins=false;for(let i=0,j=p.length-1;i<p.length;j=i++){
   if(ins)return true;for(let i=0;i<p.length;i++)if(segDist(x,y,p[i],p[(i+1)%p.length])<1)return true;return false}
 function cornerSeat(it){return Math.min(95,it.d*0.55,it.w*0.45)}
 function rects(it){const k=kindOf(it),w=it.w,d=it.d;
-  if(k==='corner'){const s=cornerSeat(it);return [{cx:0,cy:-d/2+s/2,w,d:s},{cx:w/2-s/2,cy:s/2,w:s,d:d-s}]}
+  if(k==='corner'){const s=cornerSeat(it);return [{cx:0,cy:-d/2+s/2,w,d:s},{cx:(it.flip?-1:1)*(w/2-s/2),cy:s/2,w:s,d:d-s}]}
   if(k==='door')return [{cx:0,cy:w/2,w,d:w}];
   if(k==='opening')return [{cx:0,cy:45,w,d:90}];
   if(k==='window')return [{cx:0,cy:15,w,d:30}];
@@ -362,7 +362,7 @@ function itemShape(it){const k=kindOf(it),w=it.w,d=it.d,c=it.color,dk=shade(c,-.
   else if(k==='window'){s+=R_(-w/2,0,w,30,'var(--accent)','none',1,'fill-opacity=".06"')+R_(-w/2,0,w,30,'none','o2',1,'stroke-dasharray="2 3"')+R_(-w/2,-22,w,22,'var(--glass)','o');
     for(const yy of [-15,-8])s+=`<line x1="${-w/2}" y1="${yy}" x2="${w/2}" y2="${yy}" class="o2"/>`}
   else if(k==='radiator'){s+=R_(-w/2,-d/2,w,d,c,'o',1);for(let j=1;j<Math.floor(w/8);j++)s+=`<line x1="${-w/2+j*8}" y1="${-d/2}" x2="${-w/2+j*8}" y2="${d/2}" class="o2"/>`}
-  return s;}
+  return it.flip?`<g transform="scale(-1 1)">${s}</g>`:s;}
 
 function measure(){const r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;if(!r.width||!vb||!vb.width)return 1;return Math.max(vb.width/r.width,vb.height/r.height)}
 
@@ -451,6 +451,7 @@ function renderInspector(){const it=selItem();armed=null;
       ${door?`<div class="${isWin(it)?'grid3':'grid2'}">${num('f-w','Width','w',it.w)}${num('f-h','Height','h',it.h)}${isWin(it)?num('f-sill','Sill height','sill',it.sill||0):''}</div><p class="note">${isWin(it)?'Anything taller than the sill placed in front of the window is flagged.':'Doors stick to the nearest wall. Drag along a wall to move.'}</p>`:
       `<div class="grid3">${num('f-w','Width','w',it.w)}${num('f-d','Depth','d',it.d)}${num('f-h','Height','h',it.h)}</div>
       <div class="field">Rotation <span class="unit">degrees</span><div class="rotrow"><button data-act="rotL" aria-label="Turn 90 degrees anticlockwise">↺ 90°</button><input id="f-rot" type="number" step="15" data-f="rot" value="${Math.round(it.rot)}" aria-label="Rotation in degrees"><button data-act="rotR" aria-label="Turn 90 degrees clockwise">↻ 90°</button></div></div>
+      ${kindOf(it)==='corner'?`<div class="field">Short side, as you face the sofa<div class="grid2"><button data-act="flipR" aria-pressed="${!it.flip}">On the right</button><button data-act="flipL" aria-pressed="${!!it.flip}">On the left</button></div></div>`:''}
       <div class="field">Colour<div class="swatches">${SWATCHES.map(([n,h])=>`<button class="sw" style="background:${h}" data-color="${h}" title="${n}" aria-label="${n}" aria-pressed="${h.toLowerCase()===String(it.color).toLowerCase()}"></button>`).join('')}</div></div>
       <div class="colrow"><input id="f-color" type="color" data-f="color" value="${esc(it.color)}"><span>Any other colour</span></div>`}
       <p class="note">Catalogue size ${c.w} × ${c.d} × ${c.h} cm. <button class="ghost" data-act="resetSize" style="padding:2px 6px;font-size:.78rem">Reset size</button></p>
@@ -509,6 +510,8 @@ ins.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return
   const a=b.dataset.act;if(!a)return;
   if(a==='rotL'&&it){it.rot=((it.rot-90)%360+360)%360;commit()}
   if(a==='rotR'&&it){it.rot=(it.rot+90)%360;commit()}
+  if(a==='flipR'&&it){it.flip=false;commit()}
+  if(a==='flipL'&&it){it.flip=true;commit()}
   if(a==='dup'&&it)duplicate();
   if(a==='del'&&it)remove();
   if(a==='desel'){sel=null;renderAll()}
@@ -617,6 +620,7 @@ function build3DItem(it){const g=new THREE.Group();g.position.set(it.x,0,it.y);g
     for(const x of [-w/6,w/6])box(g,2,h,3,F,x,sl+h/2,4);for(const y of [h/4,3*h/4])box(g,w,2,3,F,0,sl+y,4);const gl=new THREE.Mesh(new THREE.BoxGeometry(w-8,h-8,1),mat(cssVar('--glass'),{transparent:true,opacity:.45,roughness:.1}));gl.position.set(0,sl+h/2,2);g.add(gl);
     box(g,w,.4,30,cssVar('--accent'),0,.7,15,{cast:false,m:{transparent:true,opacity:.12}});}
   else if(k==='radiator'){box(g,w,h,d,c,0,h/2+12,0);for(const s of [-1,1])box(g,3,12,3,'#bbbbbb',s*(w/2-8),6,0)}
+  if(it.flip)g.scale.x=-1;
   return g;}
 
 function rebuild3D(){if(!T.ready)return;
