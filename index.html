@@ -213,6 +213,7 @@ const CAT={
   sofa2:{name:'2-seat sofa',kind:'sofa',w:175,d:92,h:85,color:'#cbbfa8'},
   snug:{name:'Snuggler',kind:'sofa',w:130,d:90,h:85,color:'#93a68a'},
   corner:{name:'Corner sofa',kind:'corner',w:260,d:200,h:85,color:'#a9a196'},
+  corner33:{name:'3-corner-3 sofa',kind:'corner',w:270,d:270,h:85,color:'#a9a196',equal:true},
   armchair:{name:'Armchair',kind:'sofa',w:85,d:88,h:90,color:'#93a68a'},
   tub:{name:'Tub chair',kind:'tub',w:75,d:75,h:75,color:'#c8a46e'},
   footstool:{name:'Footstool',kind:'stool',w:75,d:55,h:42,color:'#2f6d70'},
@@ -233,7 +234,7 @@ const CAT={
   window:{name:'Window',kind:'window',w:90,d:30,h:120,sill:90,color:'#ecebe6'}
 };
 const GROUPS=[
-  ['Seating',['sofa3','sofa2','snug','corner','armchair','tub','footstool']],
+  ['Seating',['sofa3','sofa2','snug','corner','corner33','armchair','tub','footstool']],
   ['Tables',['coffee','coffeeR','side','dining','bistro','dchair']],
   ['Storage and decor',['sideboard','rug','plant','radiator']],
   ['Doors and windows',['houseDoor','bifold','slider','door','window']]
@@ -245,7 +246,7 @@ const isWin=it=>CAT[it.type]?.kind==='window';
 const diningWindow=()=>mk('window',763,0,0,{label:'Window to dining room',sill:70,h:178});
 const kindOf=it=>CAT[it.type]?.kind||'table';
 
-function mk(type,x,y,rot,extra){const c=CAT[type];return Object.assign({id:uid(),type,label:c.name,x,y,w:c.w,d:c.d,h:c.h,rot:rot||0,color:c.color},extra||{})}
+function mk(type,x,y,rot,extra){const c=CAT[type];return Object.assign({id:uid(),type,label:c.name,x,y,w:c.w,d:c.d,h:c.h,rot:rot||0,color:c.color},c.equal?{equal:true}:{},extra||{})}
 function fixed(){return [mk('houseDoor',407,0,0),diningWindow(),mk('bifold',822,138,90),mk('slider',677,314,180),mk('radiator',6,124,90,{label:'Radiator (existing)'})]}
 function example(){
   const A=[...fixed(),
@@ -343,7 +344,7 @@ function itemShape(it){const k=kindOf(it),w=it.w,d=it.d,c=it.color,dk=shade(c,-.
   else if(k==='corner'){const sd=cornerSeat(it),arm=18,back=Math.min(22,sd*.25);
     s+=`<path d="M${-w/2} ${-d/2}H${w/2}V${d/2}H${w/2-sd}V${-d/2+sd}H${-w/2}Z" fill="${dk}" class="o"/>`;
     const tl=w-arm-back,n=Math.max(1,Math.round(tl/70)),cw=tl/n;for(let i=0;i<n;i++)s+=R_(-w/2+arm+i*cw+1,-d/2+back+1,cw-2,sd-back-2,c,'o2',4);
-    s+=R_(w/2-sd+1,-d/2+sd+1,sd-back-2,d-sd-arm-2,c,'o2',4);}
+    {const L=d-sd-arm,n2=Math.max(1,Math.round(L/70)),ch=L/n2;for(let i=0;i<n2;i++)s+=R_(w/2-sd+1,-d/2+sd+i*ch+1,sd-back-2,ch-2,c,'o2',4)}}
   else if(k==='tub'){s+=`<ellipse rx="${w/2}" ry="${d/2}" fill="${dk}" class="o"/><ellipse cy="6" rx="${Math.max(4,w/2-11)}" ry="${Math.max(4,d/2-12)}" fill="${c}" class="o2"/>`}
   else if(k==='stool'){s+=R_(-w/2,-d/2,w,d,c,'o',9);for(const a of [-1,0,1])for(const b of [-1,1])s+=`<circle cx="${a*w/4}" cy="${b*d/5}" r="1.6" fill="${dk}"/>`}
   else if(k==='table'){s+=R_(-w/2,-d/2,w,d,c,'o',2)+R_(-w/2+5,-d/2+5,w-10,d-10,'none','o2',1)}
@@ -451,7 +452,8 @@ function renderInspector(){const it=selItem();armed=null;
       ${door?`<div class="${isWin(it)?'grid3':'grid2'}">${num('f-w','Width','w',it.w)}${num('f-h','Height','h',it.h)}${isWin(it)?num('f-sill','Sill height','sill',it.sill||0):''}</div><p class="note">${isWin(it)?'Anything taller than the sill placed in front of the window is flagged.':'Doors stick to the nearest wall. Drag along a wall to move.'}</p>`:
       `<div class="grid3">${num('f-w','Width','w',it.w)}${num('f-d','Depth','d',it.d)}${num('f-h','Height','h',it.h)}</div>
       <div class="field">Rotation <span class="unit">degrees</span><div class="rotrow"><button data-act="rotL" aria-label="Turn 90 degrees anticlockwise">↺ 90°</button><input id="f-rot" type="number" step="15" data-f="rot" value="${Math.round(it.rot)}" aria-label="Rotation in degrees"><button data-act="rotR" aria-label="Turn 90 degrees clockwise">↻ 90°</button></div></div>
-      ${kindOf(it)==='corner'?`<div class="field">Short side, as you face the sofa<div class="grid2"><button data-act="flipR" aria-pressed="${!it.flip}">On the right</button><button data-act="flipL" aria-pressed="${!!it.flip}">On the left</button></div></div>`:''}
+      ${kindOf(it)==='corner'?`<div class="field">Short side, as you face the sofa<div class="grid2"><button data-act="flipR" aria-pressed="${!it.flip}">On the right</button><button data-act="flipL" aria-pressed="${!!it.flip}">On the left</button></div></div>
+      <label class="colrow" for="f-eq"><input id="f-eq" type="checkbox" data-eq="1"${it.equal?' checked':''}> Keep both sides the same length</label>`:''}
       <div class="field">Colour<div class="swatches">${SWATCHES.map(([n,h])=>`<button class="sw" style="background:${h}" data-color="${h}" title="${n}" aria-label="${n}" aria-pressed="${h.toLowerCase()===String(it.color).toLowerCase()}"></button>`).join('')}</div></div>
       <div class="colrow"><input id="f-color" type="color" data-f="color" value="${esc(it.color)}"><span>Any other colour</span></div>`}
       <p class="note">Catalogue size ${c.w} × ${c.d} × ${c.h} cm. <button class="ghost" data-act="resetSize" style="padding:2px 6px;font-size:.78rem">Reset size</button></p>
@@ -493,7 +495,7 @@ function renderInspector(){const it=selItem();armed=null;
 ins.addEventListener('input',e=>{const t=e.target;
   if(t.dataset.f){const it=selItem();if(!it)return;const f=t.dataset.f;let v=t.value;
     if(t.type==='number'){v=parseFloat(v);if(!isFinite(v))return;if(f==='rot')v=((v%360)+360)%360;else v=clamp(v,f==='sill'?0:f==='h'?1:10,1500)}
-    it[f]=v;if(isDoor(it)&&f==='w')snapDoor(it);if(f==='label'){const h=$('#selTitle');if(h)h.textContent=v}
+    it[f]=v;if(it.equal&&(f==='w'||f==='d')){it.w=it.d=v;const o=ins.querySelector(f==='w'?'#f-d':'#f-w');if(o)o.value=v}if(isDoor(it)&&f==='w')snapDoor(it);if(f==='label'){const h=$('#selTitle');if(h)h.textContent=v}
     if(f==='color')ins.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-pressed',b.dataset.color.toLowerCase()===v.toLowerCase()));
     renderPlan();sched3D();}
   else if(t.dataset.r&&t.type==='color'){S.room[t.dataset.r]=t.value;renderPlan();sched3D()}
@@ -501,6 +503,7 @@ ins.addEventListener('input',e=>{const t=e.target;
   else if(t.dataset.r&&t.tagName!=='SELECT'){const v=parseFloat(t.value);if(!isFinite(v))return;S.room[t.dataset.r]=clamp(v,t.dataset.r==='dwarf'?0:20,3000);items().forEach(i=>{if(isDoor(i))snapDoor(i)});S.layouts.forEach(l=>l.items.forEach(i=>{if(isDoor(i))snapDoor(i)}));renderPlan();sched3D()}
   else if(t.dataset.l){L().name=t.value||'Untitled';renderTabs()}});
 ins.addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.eq){const it=selItem();if(it){it.equal=t.checked;if(t.checked){const m=Math.max(it.w,it.d);it.w=it.d=m}commit()}return}
   if(t.dataset.r==='dwarfMode'){S.room.dwarfMode=t.value;commit({keepInspector:true});return}
   if(t.dataset.r==='shape'){S.room.shape=t.value;S.layouts.forEach(l=>l.items.forEach(i=>{if(isDoor(i))snapDoor(i)}));commit();return}
   if(t.dataset.f||t.dataset.r||t.dataset.l)commit({keepInspector:true});});
@@ -535,7 +538,7 @@ svg.addEventListener('pointerdown',e=>{if(e.button>0)return;const p=toCm(e);cons
   try{svg.setPointerCapture(e.pointerId)}catch(err){}e.preventDefault();});
 svg.addEventListener('pointermove',e=>{if(!drag)return;const it=selItem();if(!it)return;const p=toCm(e);drag.moved=true;
   if(drag.mode==='move'){it.x=snap(p.x-drag.dx);it.y=snap(p.y-drag.dy);if(isDoor(it))snapDoor(it)}
-  else if(drag.mode==='size'){const [lx,ly]=toLocal(it,p.x,p.y);it.w=Math.max(20,snap(Math.abs(lx)*2));if(!isDoor(it))it.d=Math.max(20,snap(Math.abs(ly)*2));else snapDoor(it)}
+  else if(drag.mode==='size'){const [lx,ly]=toLocal(it,p.x,p.y);it.w=Math.max(20,snap(Math.abs(lx)*2));if(!isDoor(it))it.d=Math.max(20,snap(Math.abs(ly)*2));else snapDoor(it);if(it.equal){const m=Math.max(it.w,it.d);it.w=it.d=m}}
   else if(drag.mode==='rot'){let a=Math.atan2(p.y-it.y,p.x-it.x)*180/Math.PI+90;it.rot=((snap(a,15)%360)+360)%360}
   renderPlan();sched3D();});
 function endDrag(){if(!drag)return;const moved=drag.moved;drag=null;if(moved)commit();}
