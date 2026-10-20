@@ -449,7 +449,7 @@ function renderInspector(){const it=selItem();armed=null;
     ins.innerHTML=`<div class="ins">
       <div><div class="eyebrow">Selected · ${esc(c.name)}</div><h2 id="selTitle">${esc(it.label)}</h2></div>
       <label class="field" for="f-label">Name<input id="f-label" data-f="label" value="${esc(it.label)}"></label>
-      ${door?`<div class="${isWin(it)?'grid3':'grid2'}">${num('f-w','Width','w',it.w)}${num('f-h','Height','h',it.h)}${isWin(it)?num('f-sill','Sill height','sill',it.sill||0):''}</div><p class="note">${isWin(it)?'Anything taller than the sill placed in front of the window is flagged.':'Doors stick to the nearest wall. Drag along a wall to move.'}</p>`:
+      ${door?`<div class="${isWin(it)?'grid3':'grid2'}">${num('f-w','Width','w',it.w)}${num('f-h','Height','h',it.h)}${isWin(it)?num('f-sill','Sill height','sill',it.sill||0):''}</div><p class="note">${isWin(it)?'Anything taller than the sill placed in front of the window is flagged.':'Doors stick to the nearest wall. Drag along a wall to move.'}</p>${it.type==='bifold'?`<div class="field">In the 3D view the doors are<div class="grid2"><button data-act="dOpen" aria-pressed="${it.open!==false}">Open</button><button data-act="dClose" aria-pressed="${it.open===false}">Closed</button></div></div>`:''}`:
       `<div class="grid3">${num('f-w','Width','w',it.w)}${num('f-d','Depth','d',it.d)}${num('f-h','Height','h',it.h)}</div>
       <div class="field">Rotation <span class="unit">degrees</span><div class="rotrow"><button data-act="rotL" aria-label="Turn 90 degrees anticlockwise">↺ 90°</button><input id="f-rot" type="number" step="15" data-f="rot" value="${Math.round(it.rot)}" aria-label="Rotation in degrees"><button data-act="rotR" aria-label="Turn 90 degrees clockwise">↻ 90°</button></div></div>
       ${kindOf(it)==='corner'?`<div class="field">Short side, as you face the sofa<div class="grid2"><button data-act="flipR" aria-pressed="${!it.flip}">On the right</button><button data-act="flipL" aria-pressed="${!!it.flip}">On the left</button></div></div>
@@ -514,6 +514,8 @@ ins.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return
   if(a==='rotL'&&it){it.rot=((it.rot-90)%360+360)%360;commit()}
   if(a==='rotR'&&it){it.rot=(it.rot+90)%360;commit()}
   if(a==='flipR'&&it){it.flip=false;commit()}
+  if(a==='dOpen'&&it){it.open=true;commit()}
+  if(a==='dClose'&&it){it.open=false;commit()}
   if(a==='flipL'&&it){it.flip=true;commit()}
   if(a==='dup'&&it)duplicate();
   if(a==='del'&&it)remove();
@@ -615,6 +617,8 @@ function build3DItem(it){const g=new THREE.Group();g.position.set(it.x,0,it.y);g
     const sec=new THREE.Mesh(new THREE.CircleGeometry(w,24,0,Math.PI/2),mat(cssVar('--accent'),{transparent:true,opacity:.18,side:THREE.DoubleSide}));sec.rotation.x=Math.PI/2;sec.position.set(-w/2,.7,0);g.add(sec)}
   else if(k==='opening'){const F='#f4f3ee';for(const s of [-1,1])box(g,7,h,8,F,s*(w/2-3.5),h/2,3);box(g,w,8,8,F,0,h+4,3);
     if(it.type==='houseDoor'){box(g,w-16,h-4,4,'#e9e4da',0,h/2,2.5);box(g,3,3,8,'#8a8a8a',w/2-18,h*.48,6)}
+    else if(it.type==='bifold'&&it.open!==false){const pw=w/3,GM=mat(cssVar('--glass'),{transparent:true,opacity:.3,depthWrite:false,roughness:.1});
+      for(let j=0;j<3;j++){const x=w/2-8-j*7,z=-24-pw/2;box(g,5,6,pw,F,x,3,z);box(g,5,6,pw,F,x,h-3,z);box(g,5,h,6,F,x,h/2,z-pw/2+3);box(g,5,h,6,F,x,h/2,z+pw/2-3);const gl=new THREE.Mesh(new THREE.BoxGeometry(1.5,h-12,pw-12),GM);gl.position.set(x,h/2,z);g.add(gl)}}
     else{const n=it.type==='bifold'?3:2;for(let j=1;j<n;j++)box(g,5,h,6,F,-w/2+j*w/n,h/2,3);
       const gl=new THREE.Mesh(new THREE.BoxGeometry(w-12,h,1),mat(cssVar('--glass'),{transparent:true,opacity:.3,depthWrite:false,roughness:.1}));gl.position.set(0,h/2,3);g.add(gl)}
     box(g,w,.4,90,cssVar('--accent'),0,.7,45,{cast:false,m:{transparent:true,opacity:.14}});}
@@ -634,11 +638,16 @@ function rebuild3D(){if(!T.ready)return;
   const sh=new THREE.Shape();p.forEach((q,i)=>i?sh.lineTo(q[0],q[1]):sh.moveTo(q[0],q[1]));
   const floor=new THREE.Mesh(new THREE.ShapeGeometry(sh),mat('#ffffff',{map:tileTexture(),side:THREE.DoubleSide}));floor.rotation.x=Math.PI/2;floor.receiveShadow=true;g.add(floor);
   const ridge=Math.max(r.ridge||r.eaves,r.eaves);
-  const glassM=mat(cssVar('--glass'),{transparent:true,opacity:.22,depthWrite:false,roughness:.1,side:THREE.DoubleSide}),frameM=mat('#f4f3ee'),paintM=mat(r.paint||'#efe3c8'),renderM=mat('#e6dccb'),oakM=mat(r.kitchenFinish||'#a27b55'),wallMats=ext=>[ext,ext,ext,ext,paintM,ext];
+  const glassM=mat(cssVar('--glass'),{transparent:true,opacity:.22,depthWrite:false,roughness:.1,side:THREE.DoubleSide}),frameM=mat('#f4f3ee'),paintM=mat(r.paint||'#efe3c8'),renderM=mat('#e6dccb'),oakM=mat(r.kitchenFinish||'#a27b55'),kitM=mat('#ece6da'),wallMats=ext=>[ext,ext,ext,ext,paintM,ext];
   const quad=(pts,m)=>{const ge=new THREE.BufferGeometry();ge.setAttribute('position',new THREE.Float32BufferAttribute(pts.flat(),3));ge.setIndex([0,1,2,0,2,3]);ge.computeVertexNormals();const me=new THREE.Mesh(ge,m);g.add(me);return me};
   p.forEach((a,i)=>{const b=p[(i+1)%p.length],ex=b[0]-a[0],ey=b[1]-a[1],len=Math.hypot(ex,ey),nx=ey/len,ny=-ex/len;
     if(solidEdge(i)){const w=new THREE.Group();w.rotation.y=-Math.atan2(ey,ex);w.position.set((a[0]+b[0])/2+nx*11,0,(a[1]+b[1])/2+ny*11);
-      const ht=i===0?ridge+60:Math.max(hAt(a[1]),hAt(b[1]))+30;box(w,len+24,ht,22,null,0,ht/2,0,{material:i===0?wallMats(renderM):[oakM,oakM,oakM,oakM,oakM,oakM]});g.add(w);return}
+      const ht=i===0?ridge+60:Math.max(hAt(a[1]),hAt(b[1]))+30,mats=i===0?wallMats(renderM):[oakM,oakM,oakM,oakM,oakM,kitM];
+      const ops=[];for(const it of items()){const k=kindOf(it);if(k!=='opening'&&k!=='door')continue;if(segDist(it.x,it.y,a,b)>3)continue;const u=((it.x-a[0])*ex+(it.y-a[1])*ey)/len;ops.push([Math.max(-12,u-it.w/2),Math.min(len+12,u+it.w/2),Math.min(ht-5,(it.h||200)+8)])}
+      ops.sort((p,q)=>p[0]-q[0]);let cur=-12;
+      const piece=(u0,u1,y0,y1)=>{if(u1-u0<0.5||y1-y0<0.5)return;box(w,u1-u0,y1-y0,22,null,(u0+u1)/2-len/2,(y0+y1)/2,0,{material:mats})};
+      for(const [u0,u1,oh] of ops){piece(cur,u0,0,ht);piece(Math.max(cur,u0),u1,oh,ht);cur=Math.max(cur,u1)}
+      piece(cur,len+12,0,ht);g.add(w);return}
     const dw=dwarfOn(i,p),o=6,ax=a[0]+nx*o,az=a[1]+ny*o,bx=b[0]+nx*o,bz=b[1]+ny*o,ha=hAt(a[1]),hb=hAt(b[1]);
     if(dw>0){const w=new THREE.Group();w.rotation.y=-Math.atan2(ey,ex);w.position.set((ax+bx)/2,0,(az+bz)/2);box(w,len+12,dw,12,null,0,dw/2,0,{material:wallMats(renderM)});g.add(w)}
     quad([[ax,dw,az],[bx,dw,bz],[bx,hb,bz],[ax,ha,az]],glassM);
@@ -651,6 +660,7 @@ function rebuild3D(){if(!T.ready)return;
   g.add(new THREE.Mesh(rg,mat(cssVar('--glass'),{transparent:true,opacity:.16,depthWrite:false,roughness:.1,side:THREE.DoubleSide})));
   const bars=[];for(let x=bb.x+40;x<bb.x+bb.w;x+=70){const t=rayDist(x,0.5,0,1,p);if(!isFinite(t))continue;const y2=0.5+t;bars.push(x,hAt(0)+8,0,x,hAt(y2)+8,y2)}
   const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(bars,3));g.add(new THREE.LineSegments(bg,new THREE.LineBasicMaterial({color:0xf4f3ee})));
+  if(r.rightSolid){const kf=new THREE.Mesh(new THREE.PlaneGeometry(420,bb.h+220),mat('#d9d2c4'));kf.rotation.x=-Math.PI/2;kf.position.set(bb.x+bb.w+22+210,0.2,cy);kf.receiveShadow=true;g.add(kf)}
   for(const it of items())g.add(build3DItem(it));
   T.group=g;T.scene.add(g);
   const s=T.sun;s.position.set(cx+span*.5,span*1.6+300,cy+span*1.1);s.target.position.set(cx,0,cy);const sc=s.shadow.camera,e=span*.9+120;sc.left=-e;sc.right=e;sc.top=e;sc.bottom=-e;sc.near=10;sc.far=span*5+2000;sc.updateProjectionMatrix();
@@ -660,7 +670,7 @@ function camPreset(kind){if(!T.ready)return;const p=roomPoly(S.room),bb=bbox(p),
   if(kind==='overview'){c.position.set(cx+span*.15,span*.75,cy+span*.95);t.set(cx,40,cy)}
   else if(kind==='top'){c.position.set(cx,span*1.9,cy+1);t.set(cx,0,cy)}
   else if(kind==='house'){const a=p[0],b=p[1];c.position.set((a[0]+b[0])/2,160,(a[1]+b[1])/2+25);t.set(cx,70,cy+bb.h*.15)}
-  else if(kind==='kitchen'){c.position.set(bb.x+bb.w-15,165,cy);t.set(bb.x+bb.w*.3,70,cy)}
+  else if(kind==='kitchen'){c.position.set(bb.x+bb.w+300,160,cy*0.9);t.set(bb.x+bb.w*.45,80,cy)}
   else if(kind==='garden'){let best=null;p.forEach((a,i)=>{const b=p[(i+1)%p.length],my=(a[1]+b[1])/2;if(!best||my>best.my)best={my,mx:(a[0]+b[0])/2}});c.position.set(best.mx,165,best.my+160);t.set(cx,60,cy)}
   c.updateProjectionMatrix();T.ctl.update();}
 document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>camPreset(b.dataset.cam));
